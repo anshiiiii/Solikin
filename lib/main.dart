@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dashboard_patient.dart';
 
 void main() {
   runApp(MyApp());
@@ -178,7 +179,11 @@ class LoginScreen extends StatelessWidget {
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                // Handle login logic here
+                // Assuming any credentials are valid for now
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => DashboardPage()),
+                );
               },
               style: ElevatedButton.styleFrom(
                 padding: EdgeInsets.symmetric(horizontal: 50, vertical: 20),
