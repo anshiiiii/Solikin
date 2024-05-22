@@ -17,6 +17,7 @@ class _DashboardPageState extends State<DashboardPage> {
   final _timeController = TextEditingController();
   List<String> _schedules = [];
   bool _beforeFood = true;
+  final _instructionsController = TextEditingController();
   XFile? _medicineImage;
   List<Map<String, dynamic>> _savedMedicines = [];
 
@@ -70,6 +71,9 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<String> _saveImage(File image) async {
     try {
+      // Debugging statement to confirm method call
+      print('Saving image...');
+      
       final directory = await getExternalStorageDirectory();
       final imageDirectory = Directory('${directory!.path}/images');
       if (!await imageDirectory.exists()) {
@@ -77,11 +81,17 @@ class _DashboardPageState extends State<DashboardPage> {
       }
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
       final newImage = await image.copy('${imageDirectory.path}/$fileName');
+      
+      // Confirming the path where the image is saved
       print('Medicine image saved at: ${newImage.path}');
+      
       return newImage.path;
     } catch (e) {
+      // Print error message
       print('Error saving image: $e');
-      return ''; // Return empty string on error
+      
+      // Return empty string on error
+      return '';
     }
   }
 
@@ -220,6 +230,15 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           SizedBox(height: 20),
           TextFormField(
+          controller: _instructionsController,
+          maxLines: null, // Allows multiple lines
+          decoration: InputDecoration(
+            labelText: 'Instructions',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        SizedBox(height: 20),
+          TextFormField(
             controller: _timeController,
             decoration: InputDecoration(
               labelText: 'Time',
@@ -286,6 +305,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 'schedules': _schedules,
                 'time': _timeController.text,
                 'beforeFood': _beforeFood,
+                'instructions': _instructionsController.text,
                 'imagePath': imagePath,
               };
               final jsonData = jsonEncode(medicineData);
@@ -296,6 +316,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 _nameController.clear();
                 _dosageController.clear();
                 _timeController.clear();
+                _instructionsController.clear();
                 _schedules.clear();
                 _beforeFood = true;
                 _medicineImage = null;
@@ -378,6 +399,11 @@ class MedicineDetailPage extends StatelessWidget {
               SizedBox(height: 10),
               Text(
                 'Before Food: ${medicine['beforeFood'] ? 'Yes' : 'No'}',
+                style: TextStyle(fontSize: 18),
+              ),
+              SizedBox(height: 10),
+               Text(
+                'Instructions: ${medicine['instructions']}',
                 style: TextStyle(fontSize: 18),
               ),
               SizedBox(height: 10),
