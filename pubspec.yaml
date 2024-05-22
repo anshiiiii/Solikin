@@ -30,11 +30,21 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_native_splash: ^2.0.6+1
 
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.6
+
+flutter_native_splash:
+  color: "#ADD8E6" # light blue background color
+  #image: assets/images/solikin_logo.png # path to your logo image
+  android: true
+  ios: true
+  web: true
+  fullscreen: true
+
 
 dev_dependencies:
   flutter_test:
