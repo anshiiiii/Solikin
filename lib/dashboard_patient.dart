@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as path;
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -28,8 +29,11 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _requestPermissions() async {
     if (await Permission.camera.request().isGranted &&
-        await Permission.storage.request().isGranted) {
+        await Permission.storage.request().isGranted &&
+        await Permission.manageExternalStorage.request().isGranted) {
       // Permissions granted
+    } else {
+      // Handle permissions not granted
     }
   }
 
@@ -48,16 +52,16 @@ class _DashboardPageState extends State<DashboardPage> {
         child: Wrap(
           children: <Widget>[
             ListTile(
-              leading: Icon(Icons.photo_library),
-              title: Text('Photo Library'),
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Photo Library'),
               onTap: () {
                 Navigator.of(context).pop();
                 _pickImage(ImageSource.gallery);
               },
             ),
             ListTile(
-              leading: Icon(Icons.photo_camera),
-              title: Text('Camera'),
+              leading: const Icon(Icons.photo_camera),
+              title: const Text('Camera'),
               onTap: () {
                 Navigator.of(context).pop();
                 _pickImage(ImageSource.camera);
@@ -70,20 +74,30 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<String> _saveImage(File image) async {
-    try {
-      final directory = await getExternalStorageDirectory();
-      final imageDirectory = Directory('${directory!.path}/images');
+  try {
+    // Get the directory to save the image.
+    final directory = await getExternalStorageDirectory();
+
+    if (directory != null) {
+      final imagePath = path.join(directory.path, 'MedicineImages');
+      final imageDirectory = Directory(imagePath);
+
       if (!await imageDirectory.exists()) {
         await imageDirectory.create(recursive: true);
       }
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final newImage = await image.copy('${imageDirectory.path}/$fileName}');
+
+      final fileName = path.basenameWithoutExtension(image.path) + '.jpg';
+      final newImage = await image.copy(path.join(imageDirectory.path, fileName));
+
       return newImage.path;
-    } catch (e) {
-      print('Error saving image: $e');
+    } else {
       return '';
     }
+  } catch (e) {
+    print('Error saving image: $e');
+    return '';
   }
+}
 
   Future<void> _appendMedicineData(String jsonData) async {
     try {
@@ -153,7 +167,7 @@ class _DashboardPageState extends State<DashboardPage> {
   String _formatTime(TimeOfDay time) {
     final now = DateTime.now();
     final dt = DateTime(now.year, now.month, now.day, time.hour, time.minute);
-    final format = DateFormat.jm();  // uses a 12-hour format
+    final format = DateFormat.jm(); // uses a 12-hour format
     return format.format(dt);
   }
 
@@ -161,7 +175,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Patient Dashboard'),
+        title: const Text('Patient Dashboard'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -183,26 +197,26 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           TextFormField(
             controller: _nameController,
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               labelText: 'Medicine Name',
               border: OutlineInputBorder(),
             ),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           TextFormField(
             controller: _dosageController,
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               labelText: 'Dosage',
               border: OutlineInputBorder(),
             ),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Schedule'),
+              const Text('Schedule'),
               CheckboxListTile(
-                title: Text('Morning'),
+                title: const Text('Morning'),
                 value: _schedules.contains('Morning'),
                 onChanged: (bool? value) {
                   setState(() {
@@ -219,13 +233,13 @@ class _DashboardPageState extends State<DashboardPage> {
                   controller: _timeControllers['Morning'],
                   readOnly: true,
                   onTap: () => _selectTime(context, 'Morning'),
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Time for Morning (AM/PM)',
                     border: OutlineInputBorder(),
                   ),
                 ),
               CheckboxListTile(
-                title: Text('Afternoon'),
+                title: const Text('Afternoon'),
                 value: _schedules.contains('Afternoon'),
                 onChanged: (bool? value) {
                   setState(() {
@@ -242,13 +256,13 @@ class _DashboardPageState extends State<DashboardPage> {
                   controller: _timeControllers['Afternoon'],
                   readOnly: true,
                   onTap: () => _selectTime(context, 'Afternoon'),
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Time for Afternoon (AM/PM)',
                     border: OutlineInputBorder(),
                   ),
                 ),
               CheckboxListTile(
-                title: Text('Night'),
+                title: const Text('Night'),
                 value: _schedules.contains('Night'),
                 onChanged: (bool? value) {
                   setState(() {
@@ -265,19 +279,19 @@ class _DashboardPageState extends State<DashboardPage> {
                   controller: _timeControllers['Night'],
                   readOnly: true,
                   onTap: () => _selectTime(context, 'Night'),
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Time for Night (AM/PM)',
                     border: OutlineInputBorder(),
                   ),
                 ),
             ],
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
                 child: ListTile(
-                  title: Text('Before Food'),
+                  title: const Text('Before Food'),
                   leading: Radio<bool>(
                     value: true,
                     groupValue: _beforeFood,
@@ -291,7 +305,7 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               Expanded(
                 child: ListTile(
-                  title: Text('After Food'),
+                  title: const Text('After Food'),
                   leading: Radio<bool>(
                     value: false,
                     groupValue: _beforeFood,
@@ -305,33 +319,33 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ],
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           TextFormField(
             controller: _instructionsController,
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               labelText: 'Special Instructions',
               border: OutlineInputBorder(),
             ),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           _medicineImage == null
-              ? Text('No image selected.')
+              ? const Text('No image selected.')
               : Image.file(File(_medicineImage!.path)),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               ElevatedButton(
                 onPressed: () => _showImageSourceActionSheet(context),
-                child: Text('Pick Image'),
+                child: const Text('Pick Image'),
               ),
             ],
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           ElevatedButton(
             onPressed: () async {
               if (_nameController.text.isEmpty || _dosageController.text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                   content: Text('Please fill in all fields'),
                 ));
                 return;
@@ -365,9 +379,9 @@ class _DashboardPageState extends State<DashboardPage> {
                 _medicineImage = null;
               });
             },
-            child: Text('Save Medicine'),
+            child: const Text('Save Medicine'),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
         ],
       ),
     );
@@ -403,7 +417,7 @@ class _DashboardPageState extends State<DashboardPage> {
             _showMedicineForm = true;
           });
         },
-        child: Text('Add Medicine'),
+        child: const Text('Add Medicine'),
       ),
     );
   }
@@ -418,25 +432,25 @@ class MedicineDetailsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(medicine['name']),
+        title: Text(medicine['name'], style: const TextStyle(fontSize: 24,fontWeight: FontWeight.bold)),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            Text('Dosage: ${medicine['dosage']}'),
-            SizedBox(height: 10),
-            Text('Schedule: ${medicine['schedule'].join(', ')}'),
-            SizedBox(height: 10),
-            Text('Times: ${medicine['times'].join(', ')}'),
-            SizedBox(height: 10),
-            Text(medicine['beforeFood'] ? 'Before Food' : 'After Food'),
-            SizedBox(height: 10),
-            Text('Special Instructions: ${medicine['instructions']}'),
-            SizedBox(height: 10),
+            Text('Dosage: ${medicine['dosage']}',style: const TextStyle(fontSize: 24,fontWeight: FontWeight.normal)),
+            const SizedBox(height: 10),
+            Text('Schedule: ${medicine['schedule'].join(', ')}',style: const TextStyle(fontSize: 24,fontWeight: FontWeight.normal)),
+            const SizedBox(height: 10),
+            Text('Times: ${medicine['times'].join(', ')}',style: const TextStyle(fontSize: 24,fontWeight: FontWeight.normal)),
+            const SizedBox(height: 10),
+            Text(medicine['beforeFood'] ? 'Before Food' : 'After Food',style: const TextStyle(fontSize: 24,fontWeight: FontWeight.normal)),
+            const SizedBox(height: 10),
+            Text('Special Instructions: ${medicine['instructions']}',style: const TextStyle(fontSize: 24,fontWeight: FontWeight.normal)),
+            const SizedBox(height: 10),
             medicine['imagePath'].isNotEmpty
                 ? Image.file(File(medicine['imagePath']))
-                : Text('No image available'),
+                : const Text('No image available',style: TextStyle(fontSize: 24,fontWeight: FontWeight.normal)),
           ],
         ),
       ),
