@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
+import 'package:intl/intl.dart';
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -14,7 +15,11 @@ class _DashboardPageState extends State<DashboardPage> {
   bool _showMedicineForm = false;
   final _nameController = TextEditingController();
   final _dosageController = TextEditingController();
-  final _timeController = TextEditingController();
+  final _timeControllers = {
+    'Morning': TextEditingController(),
+    'Afternoon': TextEditingController(),
+    'Night': TextEditingController(),
+  };
   List<String> _schedules = [];
   bool _beforeFood = true;
   final _instructionsController = TextEditingController();
@@ -25,11 +30,6 @@ class _DashboardPageState extends State<DashboardPage> {
     if (await Permission.camera.request().isGranted &&
         await Permission.storage.request().isGranted) {
       // Permissions granted
-    } else {
-      // Permissions denied
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Camera and Storage permissions are required')),
-      );
     }
   }
 
@@ -71,26 +71,16 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<String> _saveImage(File image) async {
     try {
-      // Debugging statement to confirm method call
-      print('Saving image...');
-      
       final directory = await getExternalStorageDirectory();
       final imageDirectory = Directory('${directory!.path}/images');
       if (!await imageDirectory.exists()) {
         await imageDirectory.create(recursive: true);
       }
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final newImage = await image.copy('${imageDirectory.path}/$fileName');
-      
-      // Confirming the path where the image is saved
-      print('Medicine image saved at: ${newImage.path}');
-      
+      final newImage = await image.copy('${imageDirectory.path}/$fileName}');
       return newImage.path;
     } catch (e) {
-      // Print error message
       print('Error saving image: $e');
-      
-      // Return empty string on error
       return '';
     }
   }
@@ -139,8 +129,32 @@ class _DashboardPageState extends State<DashboardPage> {
   void dispose() {
     _nameController.dispose();
     _dosageController.dispose();
-    _timeController.dispose();
+    _timeControllers.forEach((key, controller) {
+      controller.dispose();
+    });
     super.dispose();
+  }
+
+  Future<void> _selectTime(BuildContext context, String schedule) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+      initialEntryMode: TimePickerEntryMode.input,
+      useRootNavigator: false,
+    );
+    if (picked != null) {
+      final formattedTime = _formatTime(picked);
+      setState(() {
+        _timeControllers[schedule]?.text = formattedTime;
+      });
+    }
+  }
+
+  String _formatTime(TimeOfDay time) {
+    final now = DateTime.now();
+    final dt = DateTime(now.year, now.month, now.day, time.hour, time.minute);
+    final format = DateFormat.jm();  // uses a 12-hour format
+    return format.format(dt);
   }
 
   @override
@@ -200,6 +214,16 @@ class _DashboardPageState extends State<DashboardPage> {
                   });
                 },
               ),
+              if (_schedules.contains('Morning'))
+                TextFormField(
+                  controller: _timeControllers['Morning'],
+                  readOnly: true,
+                  onTap: () => _selectTime(context, 'Morning'),
+                  decoration: InputDecoration(
+                    labelText: 'Time for Morning (AM/PM)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
               CheckboxListTile(
                 title: Text('Afternoon'),
                 value: _schedules.contains('Afternoon'),
@@ -213,6 +237,16 @@ class _DashboardPageState extends State<DashboardPage> {
                   });
                 },
               ),
+              if (_schedules.contains('Afternoon'))
+                TextFormField(
+                  controller: _timeControllers['Afternoon'],
+                  readOnly: true,
+                  onTap: () => _selectTime(context, 'Afternoon'),
+                  decoration: InputDecoration(
+                    labelText: 'Time for Afternoon (AM/PM)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
               CheckboxListTile(
                 title: Text('Night'),
                 value: _schedules.contains('Night'),
@@ -226,24 +260,17 @@ class _DashboardPageState extends State<DashboardPage> {
                   });
                 },
               ),
+              if (_schedules.contains('Night'))
+                TextFormField(
+                  controller: _timeControllers['Night'],
+                  readOnly: true,
+                  onTap: () => _selectTime(context, 'Night'),
+                  decoration: InputDecoration(
+                    labelText: 'Time for Night (AM/PM)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
             ],
-          ),
-          SizedBox(height: 20),
-          TextFormField(
-          controller: _instructionsController,
-          maxLines: null, // Allows multiple lines
-          decoration: InputDecoration(
-            labelText: 'Instructions',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        SizedBox(height: 20),
-          TextFormField(
-            controller: _timeController,
-            decoration: InputDecoration(
-              labelText: 'Time',
-              border: OutlineInputBorder(),
-            ),
           ),
           SizedBox(height: 20),
           Row(
@@ -279,51 +306,68 @@ class _DashboardPageState extends State<DashboardPage> {
             ],
           ),
           SizedBox(height: 20),
+          TextFormField(
+            controller: _instructionsController,
+            decoration: InputDecoration(
+              labelText: 'Special Instructions',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          SizedBox(height: 20),
+          _medicineImage == null
+              ? Text('No image selected.')
+              : Image.file(File(_medicineImage!.path)),
+          SizedBox(height: 10),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _medicineImage != null
-                  ? Image.file(
-                      File(_medicineImage!.path),
-                      width: 100,
-                      height: 100,
-                    )
-                  : Text('No image selected'),
               ElevatedButton(
                 onPressed: () => _showImageSourceActionSheet(context),
-                child: Text('Select Image'),
+                child: Text('Pick Image'),
               ),
             ],
           ),
           SizedBox(height: 20),
           ElevatedButton(
             onPressed: () async {
-              final imagePath = _medicineImage != null ? await _saveImage(File(_medicineImage!.path)) : '';
+              if (_nameController.text.isEmpty || _dosageController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text('Please fill in all fields'),
+                ));
+                return;
+              }
+              String imagePath = '';
+              if (_medicineImage != null) {
+                imagePath = await _saveImage(File(_medicineImage!.path));
+              }
               final medicineData = {
                 'name': _nameController.text,
                 'dosage': _dosageController.text,
-                'schedules': _schedules,
-                'time': _timeController.text,
+                'schedule': _schedules,
+                'times': _schedules.map((schedule) => _timeControllers[schedule]?.text).toList(),
                 'beforeFood': _beforeFood,
                 'instructions': _instructionsController.text,
                 'imagePath': imagePath,
               };
               final jsonData = jsonEncode(medicineData);
               await _appendMedicineData(jsonData);
-              _loadMedicineData();
+              await _loadMedicineData();
               setState(() {
                 _showMedicineForm = false;
                 _nameController.clear();
                 _dosageController.clear();
-                _timeController.clear();
-                _instructionsController.clear();
+                _timeControllers.forEach((key, controller) {
+                  controller.clear();
+                });
                 _schedules.clear();
                 _beforeFood = true;
+                _instructionsController.clear();
                 _medicineImage = null;
               });
             },
             child: Text('Save Medicine'),
           ),
+          SizedBox(height: 20),
         ],
       ),
     );
@@ -341,7 +385,7 @@ class _DashboardPageState extends State<DashboardPage> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => MedicineDetailPage(medicine: medicine),
+                builder: (context) => MedicineDetailsPage(medicine: medicine),
               ),
             );
           },
@@ -352,23 +396,23 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildAddMedicineButton() {
     return Padding(
-      padding: const EdgeInsets.only(top: 16.0),
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
       child: ElevatedButton(
         onPressed: () {
           setState(() {
-            _showMedicineForm = !_showMedicineForm;
+            _showMedicineForm = true;
           });
         },
-        child: Text(_showMedicineForm ? 'Cancel' : 'Add Medicine'),
+        child: Text('Add Medicine'),
       ),
     );
   }
 }
 
-class MedicineDetailPage extends StatelessWidget {
+class MedicineDetailsPage extends StatelessWidget {
   final Map<String, dynamic> medicine;
 
-  MedicineDetailPage({required this.medicine});
+  MedicineDetailsPage({required this.medicine});
 
   @override
   Widget build(BuildContext context) {
@@ -376,45 +420,24 @@ class MedicineDetailPage extends StatelessWidget {
       appBar: AppBar(
         title: Text(medicine['name']),
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Dosage: ${medicine['dosage']}',
-                style: TextStyle(fontSize: 18),
-              ),
-              SizedBox(height: 10),
-              Text(
-                'Schedule: ${medicine['schedules'].join(', ')}',
-                style: TextStyle(fontSize: 18),
-              ),
-              SizedBox(height: 10),
-              Text(
-                'Time: ${medicine['time']}',
-                style: TextStyle(fontSize: 18),
-              ),
-              SizedBox(height: 10),
-              Text(
-                'Before Food: ${medicine['beforeFood'] ? 'Yes' : 'No'}',
-                style: TextStyle(fontSize: 18),
-              ),
-              SizedBox(height: 10),
-               Text(
-                'Instructions: ${medicine['instructions']}',
-                style: TextStyle(fontSize: 18),
-              ),
-              SizedBox(height: 10),
-              medicine['imagePath'] != null && medicine['imagePath'].isNotEmpty
-                  ? Image.file(
-                      File(medicine['imagePath']),
-                      fit: BoxFit.contain,
-                    )
-                  : Text('No image available'),
-            ],
-          ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: ListView(
+          children: [
+            Text('Dosage: ${medicine['dosage']}'),
+            SizedBox(height: 10),
+            Text('Schedule: ${medicine['schedule'].join(', ')}'),
+            SizedBox(height: 10),
+            Text('Times: ${medicine['times'].join(', ')}'),
+            SizedBox(height: 10),
+            Text(medicine['beforeFood'] ? 'Before Food' : 'After Food'),
+            SizedBox(height: 10),
+            Text('Special Instructions: ${medicine['instructions']}'),
+            SizedBox(height: 10),
+            medicine['imagePath'].isNotEmpty
+                ? Image.file(File(medicine['imagePath']))
+                : Text('No image available'),
+          ],
         ),
       ),
     );
