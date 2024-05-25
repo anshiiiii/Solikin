@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
 import 'package:solikin/services/notifications_service.dart';
 import 'dart:io';
+import 'medicine_details.dart';  // Import the new medicine details page
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -29,16 +30,25 @@ class _DashboardPageState extends State<DashboardPage> {
   List<Map<String, dynamic>> _savedMedicines = [];
   final NotificationsService _notificationsService = NotificationsService();
 
-  Future<void> _requestPermissions() async {
-    if (await Permission.camera.request().isGranted &&
-        await Permission.storage.request().isGranted &&
-        await Permission.manageExternalStorage.request().isGranted &&
-        await Permission.systemAlertWindow.request().isGranted) {
-      // Permissions granted
-    } else {
-      // Handle permissions not granted
+ Future<void> _requestPermissions() async {
+  final permissions = [
+    Permission.camera,
+    Permission.storage,
+    Permission.manageExternalStorage,
+    Permission.systemAlertWindow,
+    Permission.notification,
+  ];
+
+  for (var permission in permissions) {
+    var status = await permission.request();
+    if (status.isDenied) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Permission for $permission is required')),
+      );
+      return;
     }
   }
+}
 
   Future<void> _requestExactAlarmsPermission() async {
     if (Platform.isAndroid) {
@@ -184,31 +194,33 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> _scheduleNotifications(Map<String, dynamic> medicineData) async {
-    for (int i = 0; i < medicineData['schedule'].length; i++) {
-      final schedule = medicineData['schedule'][i];
-      final time = medicineData['times'][i];
-      if (time != null && time.isNotEmpty) {
-        final timeOfDay = DateFormat.jm().parse(time);
-        final now = DateTime.now();
-        var firstNotification = DateTime(
-          now.year,
-          now.month,
-          now.day,
-          timeOfDay.hour,
-          timeOfDay.minute,
-        );
-        if (firstNotification.isBefore(now)) {
-          firstNotification = firstNotification.add(Duration(days: 1));
-        }
-        await _notificationsService.scheduleNotification(
-          id: medicineData['name'].hashCode + schedule.hashCode,
-          title: 'Time to take your medicine',
-          message: '${medicineData['name']} - ${schedule}',
-          scheduledNotificationDateTime: firstNotification,
-        );
+  for (int i = 0; i < medicineData['schedule'].length; i++) {
+    final schedule = medicineData['schedule'][i];
+    final time = medicineData['times'][i];
+    if (time != null && time.isNotEmpty) {
+      final timeOfDay = DateFormat.jm().parse(time);
+      final now = DateTime.now();
+      var firstNotification = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        timeOfDay.hour,
+        timeOfDay.minute,
+      );
+      if (firstNotification.isBefore(now)) {
+        firstNotification = firstNotification.add(Duration(days: 1));
       }
+      print('Scheduling notification for ${medicineData['name']} at $firstNotification');
+      await _notificationsService.scheduleNotification(
+        id: medicineData['name'].hashCode + schedule.hashCode,
+        title: 'Time to take your medicine',
+        message: '${medicineData['name']} - ${schedule}',
+        scheduledNotificationDateTime: firstNotification,
+      );
     }
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -326,35 +338,17 @@ class _DashboardPageState extends State<DashboardPage> {
             ],
           ),
           const SizedBox(height: 20),
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: ListTile(
-                  title: const Text('Before Food'),
-                  leading: Radio<bool>(
-                    value: true,
-                    groupValue: _beforeFood,
-                    onChanged: (value) {
-                      setState(() {
-                        _beforeFood = value!;
-                      });
-                    },
-                  ),
-                ),
-              ),
-              Expanded(
-                child: ListTile(
-                  title: const Text('After Food'),
-                  leading: Radio<bool>(
-                    value: false,
-                    groupValue: _beforeFood,
-                    onChanged: (value) {
-                      setState(() {
-                        _beforeFood = value!;
-                      });
-                    },
-                  ),
-                ),
+              const Text('Before Food'),
+              Switch(
+                value: _beforeFood,
+                onChanged: (bool value) {
+                  setState(() {
+                    _beforeFood = value;
+                  });
+                },
               ),
             ],
           ),
@@ -362,24 +356,16 @@ class _DashboardPageState extends State<DashboardPage> {
           TextFormField(
             controller: _instructionsController,
             decoration: const InputDecoration(
-              labelText: 'Special Instructions',
+              labelText: 'Instructions',
               border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 20),
-          _medicineImage == null
-              ? const Text('No image selected.')
-              : Image.file(File(_medicineImage!.path)),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton(
-                onPressed: () => _showImageSourceActionSheet(context),
-                child: const Text('Pick Image'),
-              ),
-            ],
+          ElevatedButton(
+            onPressed: () => _showImageSourceActionSheet(context),
+            child: const Text('Upload Image'),
           ),
+          if (_medicineImage != null) Image.file(File(_medicineImage!.path)),
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: () async {
@@ -418,11 +404,9 @@ class _DashboardPageState extends State<DashboardPage> {
                 _instructionsController.clear();
                 _medicineImage = null;
               });
-              Navigator.of(context).pop(); // Navigate back to the dashboard
             },
             child: const Text('Save Medicine'),
           ),
-          const SizedBox(height: 20),
         ],
       ),
     );
@@ -434,8 +418,12 @@ class _DashboardPageState extends State<DashboardPage> {
       itemBuilder: (context, index) {
         final medicine = _savedMedicines[index];
         return ListTile(
+          leading: medicine['imagePath'].isNotEmpty
+              ? Image.file(File(medicine['imagePath']), width: 50, height: 50, fit: BoxFit.cover)
+              : null,
           title: Text(medicine['name']),
-          subtitle: Text('Dosage: ${medicine['dosage']}'),
+          subtitle: Text('${medicine['dosage']} - ${medicine['schedule'].join(', ')}'),
+          trailing: Text(medicine['beforeFood'] ? 'Before Food' : 'After Food'),
           onTap: () {
             Navigator.push(
               context,
@@ -450,51 +438,13 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildAddMedicineButton() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16.0),
-      child: ElevatedButton(
-        onPressed: () {
-          setState(() {
-            _showMedicineForm = true;
-          });
-        },
-        child: const Text('Add Medicine'),
-      ),
-    );
-  }
-}
-
-class MedicineDetailsPage extends StatelessWidget {
-  final Map<String, dynamic> medicine;
-
-  MedicineDetailsPage({required this.medicine});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(medicine['name'], style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            Text('Dosage: ${medicine['dosage']}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
-            const SizedBox(height: 10),
-            Text('Schedule: ${medicine['schedule'].join(', ')}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
-            const SizedBox(height: 10),
-            Text('Times: ${medicine['times'].join(', ')}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
-            const SizedBox(height: 10),
-            Text(medicine['beforeFood'] ? 'Before Food' : 'After Food', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
-            const SizedBox(height: 10),
-            Text('Special Instructions: ${medicine['instructions']}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
-            const SizedBox(height: 10),
-            medicine['imagePath'].isNotEmpty
-                ? Image.file(File(medicine['imagePath']))
-                : const Text('No image available', style: TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
-          ],
-        ),
-      ),
+    return ElevatedButton(
+      onPressed: () {
+        setState(() {
+          _showMedicineForm = true;
+        });
+      },
+      child: const Text('Add Medicine'),
     );
   }
 }
