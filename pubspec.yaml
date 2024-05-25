@@ -41,6 +41,7 @@ dependencies:
   permission_handler: ^11.3.1
   flutter_local_notifications: ^17.1.2
   intl: ^0.19.0
+  flutter_datetime_picker: ^1.5.1
 
 flutter_native_splash:
   color: "#ADD8E6" # light blue background color

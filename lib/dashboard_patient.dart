@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -6,6 +5,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
+import 'package:solikin/services/notifications_service.dart';
+import 'dart:io';
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -26,14 +27,28 @@ class _DashboardPageState extends State<DashboardPage> {
   final _instructionsController = TextEditingController();
   XFile? _medicineImage;
   List<Map<String, dynamic>> _savedMedicines = [];
+  final NotificationsService _notificationsService = NotificationsService();
 
   Future<void> _requestPermissions() async {
     if (await Permission.camera.request().isGranted &&
         await Permission.storage.request().isGranted &&
-        await Permission.manageExternalStorage.request().isGranted) {
+        await Permission.manageExternalStorage.request().isGranted &&
+        await Permission.systemAlertWindow.request().isGranted) {
       // Permissions granted
     } else {
       // Handle permissions not granted
+    }
+  }
+
+  Future<void> _requestExactAlarmsPermission() async {
+    if (Platform.isAndroid) {
+      if (await Permission.systemAlertWindow.request().isGranted) {
+        // Exact alarms permission granted
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Exact alarms permission is required')),
+        );
+      }
     }
   }
 
@@ -74,30 +89,25 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<String> _saveImage(File image) async {
-  try {
-    // Get the directory to save the image.
-    final directory = await getExternalStorageDirectory();
-
-    if (directory != null) {
-      final imagePath = path.join(directory.path, 'MedicineImages');
-      final imageDirectory = Directory(imagePath);
-
-      if (!await imageDirectory.exists()) {
-        await imageDirectory.create(recursive: true);
+    try {
+      final directory = await getExternalStorageDirectory();
+      if (directory != null) {
+        final imagePath = path.join(directory.path, 'MedicineImages');
+        final imageDirectory = Directory(imagePath);
+        if (!await imageDirectory.exists()) {
+          await imageDirectory.create(recursive: true);
+        }
+        final fileName = path.basenameWithoutExtension(image.path) + '.jpg';
+        final newImage = await image.copy(path.join(imageDirectory.path, fileName));
+        return newImage.path;
+      } else {
+        return '';
       }
-
-      final fileName = path.basenameWithoutExtension(image.path) + '.jpg';
-      final newImage = await image.copy(path.join(imageDirectory.path, fileName));
-
-      return newImage.path;
-    } else {
+    } catch (e) {
+      print('Error saving image: $e');
       return '';
     }
-  } catch (e) {
-    print('Error saving image: $e');
-    return '';
   }
-}
 
   Future<void> _appendMedicineData(String jsonData) async {
     try {
@@ -136,7 +146,9 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     _requestPermissions();
+    _requestExactAlarmsPermission();
     _loadMedicineData();
+    _notificationsService.initNotification();
   }
 
   @override
@@ -169,6 +181,33 @@ class _DashboardPageState extends State<DashboardPage> {
     final dt = DateTime(now.year, now.month, now.day, time.hour, time.minute);
     final format = DateFormat.jm(); // uses a 12-hour format
     return format.format(dt);
+  }
+
+  Future<void> _scheduleNotifications(Map<String, dynamic> medicineData) async {
+    for (int i = 0; i < medicineData['schedule'].length; i++) {
+      final schedule = medicineData['schedule'][i];
+      final time = medicineData['times'][i];
+      if (time != null && time.isNotEmpty) {
+        final timeOfDay = DateFormat.jm().parse(time);
+        final now = DateTime.now();
+        var firstNotification = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          timeOfDay.hour,
+          timeOfDay.minute,
+        );
+        if (firstNotification.isBefore(now)) {
+          firstNotification = firstNotification.add(Duration(days: 1));
+        }
+        await _notificationsService.scheduleNotification(
+          id: medicineData['name'].hashCode + schedule.hashCode,
+          title: 'Time to take your medicine',
+          message: '${medicineData['name']} - ${schedule}',
+          scheduledNotificationDateTime: firstNotification,
+        );
+      }
+    }
   }
 
   @override
@@ -366,6 +405,7 @@ class _DashboardPageState extends State<DashboardPage> {
               final jsonData = jsonEncode(medicineData);
               await _appendMedicineData(jsonData);
               await _loadMedicineData();
+              await _scheduleNotifications(medicineData);
               setState(() {
                 _showMedicineForm = false;
                 _nameController.clear();
@@ -378,6 +418,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 _instructionsController.clear();
                 _medicineImage = null;
               });
+              Navigator.of(context).pop(); // Navigate back to the dashboard
             },
             child: const Text('Save Medicine'),
           ),
@@ -432,25 +473,25 @@ class MedicineDetailsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(medicine['name'], style: const TextStyle(fontSize: 24,fontWeight: FontWeight.bold)),
+        title: Text(medicine['name'], style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            Text('Dosage: ${medicine['dosage']}',style: const TextStyle(fontSize: 24,fontWeight: FontWeight.normal)),
+            Text('Dosage: ${medicine['dosage']}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
             const SizedBox(height: 10),
-            Text('Schedule: ${medicine['schedule'].join(', ')}',style: const TextStyle(fontSize: 24,fontWeight: FontWeight.normal)),
+            Text('Schedule: ${medicine['schedule'].join(', ')}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
             const SizedBox(height: 10),
-            Text('Times: ${medicine['times'].join(', ')}',style: const TextStyle(fontSize: 24,fontWeight: FontWeight.normal)),
+            Text('Times: ${medicine['times'].join(', ')}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
             const SizedBox(height: 10),
-            Text(medicine['beforeFood'] ? 'Before Food' : 'After Food',style: const TextStyle(fontSize: 24,fontWeight: FontWeight.normal)),
+            Text(medicine['beforeFood'] ? 'Before Food' : 'After Food', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
             const SizedBox(height: 10),
-            Text('Special Instructions: ${medicine['instructions']}',style: const TextStyle(fontSize: 24,fontWeight: FontWeight.normal)),
+            Text('Special Instructions: ${medicine['instructions']}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
             const SizedBox(height: 10),
             medicine['imagePath'].isNotEmpty
                 ? Image.file(File(medicine['imagePath']))
-                : const Text('No image available',style: TextStyle(fontSize: 24,fontWeight: FontWeight.normal)),
+                : const Text('No image available', style: TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
           ],
         ),
       ),

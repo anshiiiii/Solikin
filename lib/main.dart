@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:solikin/services/notifications_service.dart';
 import 'dashboard_patient.dart';
+import 'package:timezone/data/latest.dart' as tz;
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  NotificationsService().initNotification();
+  tz.initializeTimeZones();
   runApp(MyApp());
 }
 
