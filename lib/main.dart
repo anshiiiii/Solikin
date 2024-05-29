@@ -1,6 +1,12 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:solikin/register_page.dart';
 import 'package:solikin/services/notifications_service.dart';
 import 'dashboard_patient.dart';
+import 'dashboard_kin.dart'; // Import the kin dashboard page
 import 'package:timezone/data/latest.dart' as tz;
 
 void main() {
@@ -88,9 +94,11 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   bool showLogin = false;
+  String selectedRole = '';
 
-  void showLoginScreen() {
+  void showLoginScreen(String role) {
     setState(() {
+      selectedRole = role;
       showLogin = true;
     });
   }
@@ -114,14 +122,14 @@ class _HomePageState extends State<HomePage> {
             : null,
       ),
       body: showLogin
-          ? LoginScreen()
+          ? LoginScreen(role: selectedRole)
           : ChoiceScreen(onChoiceSelected: showLoginScreen),
     );
   }
 }
 
 class ChoiceScreen extends StatelessWidget {
-  final VoidCallback onChoiceSelected;
+  final Function(String) onChoiceSelected;
 
   ChoiceScreen({required this.onChoiceSelected});
 
@@ -132,7 +140,7 @@ class ChoiceScreen extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           ElevatedButton(
-            onPressed: onChoiceSelected,
+            onPressed: () => onChoiceSelected('Patient'),
             style: ElevatedButton.styleFrom(
               padding: EdgeInsets.symmetric(horizontal: 50, vertical: 20),
               backgroundColor: Color.fromARGB(255, 29, 238, 133),
@@ -142,7 +150,7 @@ class ChoiceScreen extends StatelessWidget {
           ),
           SizedBox(height: 20),
           ElevatedButton(
-            onPressed: onChoiceSelected,
+            onPressed: () => onChoiceSelected('Kin'),
             style: ElevatedButton.styleFrom(
               padding: EdgeInsets.symmetric(horizontal: 50, vertical: 20),
               backgroundColor: Color.fromARGB(255, 191, 219, 32),
@@ -156,7 +164,51 @@ class ChoiceScreen extends StatelessWidget {
   }
 }
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
+  final String role;
+
+  LoginScreen({required this.role});
+
+  @override
+  _LoginScreenState createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  Future<void> _loginUser() async {
+    final directory = await getExternalStorageDirectory();
+    final file = File('${directory!.path}/${widget.role.toLowerCase()}_data.json');
+    if (await file.exists()) {
+      final existingData = await file.readAsString();
+      final List<dynamic> users = jsonDecode(existingData);
+      final user = users.firstWhere(
+        (user) =>
+            user['email'] == _emailController.text &&
+            user['password'] == _passwordController.text &&
+            user['role'] == widget.role,
+        orElse: () => null,
+      );
+
+      if (user != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+              builder: (context) => widget.role == 'Patient'
+                  ? DashboardPage(patientId: user['id']) // Pass patient ID
+                  : DashboardKinPage()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Invalid credentials or role')));
+      }
+    } else {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('No users found')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -168,6 +220,7 @@ class LoginScreen extends StatelessWidget {
             Text('Login', style: TextStyle(fontSize: 24)),
             SizedBox(height: 20),
             TextField(
+              controller: _emailController,
               decoration: InputDecoration(
                 labelText: 'Email or Phone Number',
                 border: OutlineInputBorder(),
@@ -176,6 +229,7 @@ class LoginScreen extends StatelessWidget {
             SizedBox(height: 20),
             TextField(
               obscureText: true,
+              controller: _passwordController,
               decoration: InputDecoration(
                 labelText: 'Password',
                 border: OutlineInputBorder(),
@@ -183,19 +237,25 @@ class LoginScreen extends StatelessWidget {
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
-                // Assuming any credentials are valid for now
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => DashboardPage()),
-                );
-              },
+              onPressed: _loginUser,
               style: ElevatedButton.styleFrom(
                 padding: EdgeInsets.symmetric(horizontal: 50, vertical: 20),
                 backgroundColor: Color.fromARGB(255, 126, 195, 252),
                 textStyle: TextStyle(fontSize: 20),
               ),
               child: Text('Login'),
+            ),
+            SizedBox(height: 20),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) =>
+                          RegisterPage(role: widget.role)),
+                );
+              },
+              child: Text('New User? Register Here'),
             ),
           ],
         ),

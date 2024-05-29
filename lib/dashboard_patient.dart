@@ -5,11 +5,16 @@ import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
+import 'package:solikin/main.dart';
 import 'package:solikin/services/notifications_service.dart';
 import 'dart:io';
 import 'medicine_details.dart';  // Import the new medicine details page
 
 class DashboardPage extends StatefulWidget {
+  String patientId;
+
+  DashboardPage({required this.patientId});
+
   @override
   _DashboardPageState createState() => _DashboardPageState();
 }
@@ -30,25 +35,27 @@ class _DashboardPageState extends State<DashboardPage> {
   List<Map<String, dynamic>> _savedMedicines = [];
   final NotificationsService _notificationsService = NotificationsService();
 
- Future<void> _requestPermissions() async {
-  final permissions = [
-    Permission.camera,
-    Permission.storage,
-    Permission.manageExternalStorage,
-    Permission.systemAlertWindow,
-    Permission.notification,
-  ];
+  
 
-  for (var permission in permissions) {
-    var status = await permission.request();
-    if (status.isDenied) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Permission for $permission is required')),
-      );
-      return;
+  Future<void> _requestPermissions() async {
+    final permissions = [
+      Permission.camera,
+      Permission.storage,
+      Permission.manageExternalStorage,
+      Permission.systemAlertWindow,
+      Permission.notification,
+    ];
+
+    for (var permission in permissions) {
+      var status = await permission.request();
+      if (status.isDenied) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Permission for $permission is required')),
+        );
+        return;
+      }
     }
   }
-}
 
   Future<void> _requestExactAlarmsPermission() async {
     if (Platform.isAndroid) {
@@ -122,7 +129,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Future<void> _appendMedicineData(String jsonData) async {
     try {
       final directory = await getExternalStorageDirectory();
-      final file = File('${directory!.path}/medicine_data.json');
+      final file = File('${directory!.path}/patient_${widget.patientId}_medicines.json');
       if (await file.exists()) {
         final existingData = await file.readAsString();
         final List<dynamic> existingList = jsonDecode(existingData);
@@ -139,7 +146,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Future<void> _loadMedicineData() async {
     try {
       final directory = await getExternalStorageDirectory();
-      final file = File('${directory!.path}/medicine_data.json');
+      final file = File('${directory!.path}/patient_${widget.patientId}_medicines.json');
       if (await file.exists()) {
         final existingData = await file.readAsString();
         final List<dynamic> existingList = jsonDecode(existingData);
@@ -149,6 +156,18 @@ class _DashboardPageState extends State<DashboardPage> {
       }
     } catch (e) {
       print('Error loading medicine data: $e');
+    }
+  }
+
+  Future<void> _updateMedicineData() async {
+    try {
+      final directory = await getExternalStorageDirectory();
+      final file = File('${directory!.path}/patient_${widget.patientId}_medicines.json');
+      if (await file.exists()) {
+        await file.writeAsString(jsonEncode(_savedMedicines));
+      }
+    } catch (e) {
+      print('Error updating medicine data: $e');
     }
   }
 
@@ -194,39 +213,69 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> _scheduleNotifications(Map<String, dynamic> medicineData) async {
-  for (int i = 0; i < medicineData['schedule'].length; i++) {
-    final schedule = medicineData['schedule'][i];
-    final time = medicineData['times'][i];
-    if (time != null && time.isNotEmpty) {
-      final timeOfDay = DateFormat.jm().parse(time);
-      final now = DateTime.now();
-      var firstNotification = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        timeOfDay.hour,
-        timeOfDay.minute,
-      );
-      if (firstNotification.isBefore(now)) {
-        firstNotification = firstNotification.add(Duration(days: 1));
+    for (int i = 0; i < medicineData['schedule'].length; i++) {
+      final schedule = medicineData['schedule'][i];
+      final time = medicineData['times'][i];
+      if (time != null && time.isNotEmpty) {
+        final timeOfDay = DateFormat.jm().parse(time);
+        final now = DateTime.now();
+        var firstNotification = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          timeOfDay.hour,
+          timeOfDay.minute,
+        );
+        if (firstNotification.isBefore(now)) {
+          firstNotification = firstNotification.add(Duration(days: 1));
+        }
+        print('Scheduling notification for ${medicineData['name']} at $firstNotification');
+        await _notificationsService.scheduleNotification(
+          id: medicineData['name'].hashCode + schedule.hashCode,
+          title: 'Time to take your medicine',
+          message: '${medicineData['name']} - ${schedule}',
+          scheduledNotificationDateTime: firstNotification,
+        );
       }
-      print('Scheduling notification for ${medicineData['name']} at $firstNotification');
-      await _notificationsService.scheduleNotification(
-        id: medicineData['name'].hashCode + schedule.hashCode,
-        title: 'Time to take your medicine',
-        message: '${medicineData['name']} - ${schedule}',
-        scheduledNotificationDateTime: firstNotification,
-      );
     }
   }
-}
 
+  Future<void> _logout() async {
+
+    setState(() {
+
+      widget.patientId = '';
+
+    });
+
+    
+
+    Navigator.pushReplacement(
+
+      context,
+
+      MaterialPageRoute(builder: (context) => HomePage()),
+
+    );
+
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Patient Dashboard'),
+        actions: [
+
+          IconButton(
+
+            icon: const Icon(Icons.logout),
+
+            onPressed: _logout,
+
+          ),
+
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -387,6 +436,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 'beforeFood': _beforeFood,
                 'instructions': _instructionsController.text,
                 'imagePath': imagePath,
+                'taken': false,  // Add the new field here
               };
               final jsonData = jsonEncode(medicineData);
               await _appendMedicineData(jsonData);
@@ -423,7 +473,21 @@ class _DashboardPageState extends State<DashboardPage> {
               : null,
           title: Text(medicine['name']),
           subtitle: Text('${medicine['dosage']} - ${medicine['schedule'].join(', ')}'),
-          trailing: Text(medicine['beforeFood'] ? 'Before Food' : 'After Food'),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(medicine['beforeFood'] ? 'Before Food' : 'After Food'),
+              Checkbox(
+                value: medicine['taken'],
+                onChanged: (bool? value) {
+                  setState(() {
+                    medicine['taken'] = value ?? false;
+                    _updateMedicineData();
+                  });
+                },
+              ),
+            ],
+          ),
           onTap: () {
             Navigator.push(
               context,
