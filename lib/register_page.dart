@@ -40,8 +40,13 @@ class _RegisterPageState extends State<RegisterPage> {
     }
 
     // Create an empty file for the patient's medicine details
-    final medicineFile = File('${directory.path}/patient_${userId}_medicines.json');
-    await medicineFile.writeAsString(jsonEncode([]));
+    if (widget.role == 'Patient') {
+      final medicineFile = File('${directory.path}/patient_${userId}_medicines.json');
+      await medicineFile.writeAsString(jsonEncode([]));
+    } else if (widget.role == 'Kin') {
+      final kinFile = File('${directory.path}/kin_${userId}_patientmap.json');
+      await kinFile.writeAsString(jsonEncode([]));
+    }
 
     Navigator.pop(context); // Go back to the login screen after registration
   }
