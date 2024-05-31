@@ -197,7 +197,7 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(
               builder: (context) => widget.role == 'Patient'
                   ? DashboardPage(patientId: user['id']) // Pass patient ID
-                  : DashboardKinPage()),
+                  : DashboardKinPage(kinId: user['id'],)),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

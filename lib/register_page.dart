@@ -16,39 +16,105 @@ class _RegisterPageState extends State<RegisterPage> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  String? _selectedKinId;
+  List<Map<String, String>> _kinList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.role == 'Patient') {
+      _loadKinList();
+    }
+  }
+
+  Future<void> _loadKinList() async {
+  try {
+    final directory = await getExternalStorageDirectory();
+    if (directory == null) {
+      throw Exception("Could not get the external storage directory");
+    }
+
+    final kinFile = File('${directory.path}/kin_data.json');
+    print('Looking for file at: ${kinFile.path}'); // Debugging statement
+
+    if (await kinFile.exists()) {
+      print('File exists, reading data'); // Debugging statement
+      final kinData = await kinFile.readAsString();
+      print('Kin data: $kinData'); // Print the file content for debugging
+      final List<dynamic> kinList = jsonDecode(kinData);
+
+      setState(() {
+        _kinList = kinList.map((kin) {
+          return {
+            'id': kin['id'] as String,
+            'name': kin['name'] as String,
+          };
+        }).toList();
+      });
+      print('Kin list loaded: $_kinList'); // Debugging statement
+    } else {
+      print('File does not exist'); // Debugging statement
+    }
+  } catch (e) {
+    print("Error loading kin list: $e");
+  }
+}
 
   Future<void> _registerUser() async {
-    final directory = await getExternalStorageDirectory();
-    final file = File('${directory!.path}/${widget.role.toLowerCase()}_data.json');
-    final String userId = DateTime.now().millisecondsSinceEpoch.toString(); // Generate unique user ID
+    try {
+      final directory = await getExternalStorageDirectory();
+      if (directory == null) {
+        throw Exception("Could not get the external storage directory");
+      }
 
-    final newUser = {
-      'id': userId,
-      'name': _nameController.text,
-      'email': _emailController.text,
-      'password': _passwordController.text,
-      'role': widget.role
-    };
+      final file = File('${directory.path}/${widget.role.toLowerCase()}_data.json');
+      final String userId = DateTime.now().millisecondsSinceEpoch.toString(); // Generate unique user ID
 
-    if (await file.exists()) {
-      final existingData = await file.readAsString();
-      final List<dynamic> existingList = jsonDecode(existingData);
-      existingList.add(newUser);
-      await file.writeAsString(jsonEncode(existingList));
-    } else {
-      await file.writeAsString(jsonEncode([newUser]));
+      final newUser = {
+        'id': userId,
+        'name': _nameController.text,
+        'email': _emailController.text,
+        'password': _passwordController.text,
+        'role': widget.role,
+        if (widget.role == 'Patient') 'kinId': _selectedKinId
+      };
+
+      if (await file.exists()) {
+        final existingData = await file.readAsString();
+        final List<dynamic> existingList = jsonDecode(existingData);
+        existingList.add(newUser);
+        await file.writeAsString(jsonEncode(existingList));
+      } else {
+        await file.writeAsString(jsonEncode([newUser]));
+      }
+
+      // Create an empty file for the patient's medicine details
+      if (widget.role == 'Patient') {
+        final medicineFile = File('${directory.path}/patient_${userId}_medicines.json');
+        await medicineFile.writeAsString(jsonEncode([]));
+
+        // Add patient ID to the kin's patient map
+        if (_selectedKinId != null) {
+          final kinFile = File('${directory.path}/kin_${_selectedKinId}_patientmap.json');
+          List<dynamic> patientMap = [];
+
+          if (await kinFile.exists()) {
+            final existingKinData = await kinFile.readAsString();
+            patientMap = jsonDecode(existingKinData);
+          }
+
+          patientMap.add({'patientId': userId});
+          await kinFile.writeAsString(jsonEncode(patientMap));
+        }
+      } else if (widget.role == 'Kin') {
+        final kinFile = File('${directory.path}/kin_${userId}_patientmap.json');
+        await kinFile.writeAsString(jsonEncode([]));
+      }
+
+      Navigator.pop(context); // Go back to the login screen after registration
+    } catch (e) {
+      print("Error registering user: $e");
     }
-
-    // Create an empty file for the patient's medicine details
-    if (widget.role == 'Patient') {
-      final medicineFile = File('${directory.path}/patient_${userId}_medicines.json');
-      await medicineFile.writeAsString(jsonEncode([]));
-    } else if (widget.role == 'Kin') {
-      final kinFile = File('${directory.path}/kin_${userId}_patientmap.json');
-      await kinFile.writeAsString(jsonEncode([]));
-    }
-
-    Navigator.pop(context); // Go back to the login screen after registration
   }
 
   @override
@@ -86,6 +152,27 @@ class _RegisterPageState extends State<RegisterPage> {
                 border: OutlineInputBorder(),
               ),
             ),
+            if (widget.role == 'Patient') ...[
+              SizedBox(height: 20),
+              DropdownButtonFormField<String>(
+                value: _selectedKinId,
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedKinId = newValue;
+                  });
+                },
+                items: _kinList.map<DropdownMenuItem<String>>((Map<String, String> kin) {
+                  return DropdownMenuItem<String>(
+                    value: kin['id'],
+                    child: Text('${kin['id']} - ${kin['name']}'),
+                  );
+                }).toList(),
+                decoration: InputDecoration(
+                  labelText: 'Choose your kin',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: _registerUser,

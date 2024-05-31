@@ -35,7 +35,6 @@ class _DashboardPageState extends State<DashboardPage> {
   List<Map<String, dynamic>> _savedMedicines = [];
   final NotificationsService _notificationsService = NotificationsService();
 
-  
 
   Future<void> _requestPermissions() async {
     final permissions = [
@@ -67,6 +66,15 @@ class _DashboardPageState extends State<DashboardPage> {
         );
       }
     }
+  }
+  @override
+  void initState() {
+    super.initState();
+    _requestPermissions();
+    _requestExactAlarmsPermission();
+    _loadMedicineData();
+    _notificationsService.initNotification();
+    print('Patient ID: ${widget.patientId}'); 
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -171,14 +179,7 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _requestPermissions();
-    _requestExactAlarmsPermission();
-    _loadMedicineData();
-    _notificationsService.initNotification();
-  }
+  
 
   @override
   void dispose() {
