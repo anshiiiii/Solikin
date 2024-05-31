@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:solikin/main.dart'; // Import the HomePage for redirection
+import 'package:solikin/main.dart';
+import 'package:solikin/patient_details_page.dart'; // Import the HomePage for redirection
 
 class DashboardKinPage extends StatefulWidget {
   final String kinId;
@@ -107,7 +108,15 @@ class _DashboardKinPageState extends State<DashboardKinPage> {
                   title: Text(patient['name']),
                   subtitle: Text(patient['email']),
                   onTap: () {
-                    // Navigate to patient details or dashboard
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PatientDetailsPage(
+                          patientId: patient['id'],
+                          patientName: patient['name'],
+                        ),
+                      ),
+                    );
                   },
                 );
               },
