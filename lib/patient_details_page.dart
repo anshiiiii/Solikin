@@ -57,6 +57,7 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
                     'Schedule: ${medicine['schedule'].join(', ')}\n'
                     'Timings: ${medicine['times'].join(', ')}\n'
                     'Taken: ${medicine['taken'] ? 'Yes' : 'No'}',
+                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.normal)
                   ),
                   isThreeLine: true,
                 );
