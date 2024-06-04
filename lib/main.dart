@@ -20,7 +20,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Login Page',
+      title: 'Solikin',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -37,7 +37,6 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<Color?> _colorAnimation;
 
   @override
   void initState() {
@@ -47,14 +46,6 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(seconds: 3),
       vsync: this,
     );
-
-    _colorAnimation = ColorTween(
-      begin: const Color.fromARGB(255, 28, 133, 219),
-      end: Color.fromARGB(255, 100, 218, 224),
-    ).animate(_controller)
-      ..addListener(() {
-        setState(() {});
-      });
 
     _controller.forward().whenComplete(() {
       Navigator.pushReplacement(
@@ -73,15 +64,53 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _colorAnimation.value,
-      body: Center(
-        child: Text(
-          'Welcome to SOLIKIN',
-          style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: Color.fromARGB(255, 10, 6, 6)),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/images/splash1.jpg', 
+            fit: BoxFit.cover,
+          ),
+           const Positioned(
+          bottom: 240, // Adjust this value to position the text
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'SOLIKIN',
+                  style: TextStyle(
+                    fontSize: 46,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        blurRadius: 10.0,
+                        color: Colors.black,
+                        offset: Offset(2.0, 2.0),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  'Personalized Health care',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w300,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 20),
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ],
+            ),
+          ),
         ),
+        ],
       ),
     );
   }
@@ -113,13 +142,25 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Welcome To SOLIKIN'),
+        title: const Text(
+          'Welcome To SOLIKIN',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        centerTitle: true,
         leading: showLogin
             ? IconButton(
-                icon: Icon(Icons.arrow_back),
+                icon: const Icon(Icons.arrow_back),
                 onPressed: showChoiceScreen,
               )
-            : null,
+                      : IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () {
+                // Handle menu button press
+              },
+            ),
       ),
       body: showLogin
           ? LoginScreen(role: selectedRole)
@@ -139,24 +180,29 @@ class ChoiceScreen extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          const Text(
+            'Choose your role',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 20),
           ElevatedButton(
             onPressed: () => onChoiceSelected('Patient'),
             style: ElevatedButton.styleFrom(
-              padding: EdgeInsets.symmetric(horizontal: 50, vertical: 20),
-              backgroundColor: Color.fromARGB(255, 29, 238, 133),
-              textStyle: TextStyle(fontSize: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 20),
+              backgroundColor: Colors.cyan.shade600,
+              textStyle: const TextStyle(fontSize: 20),
             ),
-            child: Text('Patient'),
+            child: const Text('Patient'),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           ElevatedButton(
             onPressed: () => onChoiceSelected('Kin'),
             style: ElevatedButton.styleFrom(
-              padding: EdgeInsets.symmetric(horizontal: 50, vertical: 20),
-              backgroundColor: Color.fromARGB(255, 191, 219, 32),
-              textStyle: TextStyle(fontSize: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 20),
+              backgroundColor:  Colors.cyan.shade300,
+              textStyle: const TextStyle(fontSize: 20),
             ),
-            child: Text('Kin'),
+            child: const Text('Kin'),
           ),
         ],
       ),
@@ -201,11 +247,11 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Invalid credentials or role')));
+            const SnackBar(content: Text('Invalid credentials or role')));
       }
     } else {
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('No users found')));
+          .showSnackBar(const SnackBar(content: Text('No users found')));
     }
   }
 
@@ -217,35 +263,35 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Login', style: TextStyle(fontSize: 24)),
-            SizedBox(height: 20),
+            const Text('Login', style: TextStyle(fontSize: 24)),
+            const SizedBox(height: 20),
             TextField(
               controller: _emailController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Email or Phone Number',
                 border: OutlineInputBorder(),
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             TextField(
               obscureText: true,
               controller: _passwordController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Password',
                 border: OutlineInputBorder(),
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _loginUser,
               style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 20),
-                backgroundColor: Color.fromARGB(255, 126, 195, 252),
-                textStyle: TextStyle(fontSize: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 20),
+                backgroundColor: const Color.fromARGB(255, 126, 195, 252),
+                textStyle: const TextStyle(fontSize: 20),
               ),
-              child: Text('Login'),
+              child: const Text('Login'),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             TextButton(
               onPressed: () {
                 Navigator.push(
@@ -255,7 +301,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           RegisterPage(role: widget.role)),
                 );
               },
-              child: Text('New User? Register Here'),
+              child: const Text('New User? Register Here'),
             ),
           ],
         ),

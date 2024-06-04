@@ -126,34 +126,34 @@ class _RegisterPageState extends State<RegisterPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Register', style: TextStyle(fontSize: 24)),
-            SizedBox(height: 20),
+            const Text('Register', style: TextStyle(fontSize: 24)),
+            const SizedBox(height: 20),
             TextField(
               controller: _nameController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Name',
                 border: OutlineInputBorder(),
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             TextField(
               controller: _emailController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Email or Phone Number',
                 border: OutlineInputBorder(),
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             TextField(
               obscureText: true,
               controller: _passwordController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Password',
                 border: OutlineInputBorder(),
               ),
             ),
             if (widget.role == 'Patient') ...[
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               DropdownButtonFormField<String>(
                 value: _selectedKinId,
                 onChanged: (String? newValue) {
@@ -167,21 +167,21 @@ class _RegisterPageState extends State<RegisterPage> {
                     child: Text('${kin['id']} - ${kin['name']}'),
                   );
                 }).toList(),
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Choose your kin',
                   border: OutlineInputBorder(),
                 ),
               ),
             ],
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _registerUser,
               style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 20),
-                backgroundColor: Color.fromARGB(255, 126, 195, 252),
-                textStyle: TextStyle(fontSize: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 20),
+                backgroundColor: const Color.fromARGB(255, 126, 195, 252),
+                textStyle: const TextStyle(fontSize: 20),
               ),
-              child: Text('Register'),
+              child: const Text('Register'),
             ),
           ],
         ),
