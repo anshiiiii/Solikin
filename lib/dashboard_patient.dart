@@ -8,7 +8,7 @@ import 'package:path/path.dart' as path;
 import 'package:solikin/main.dart';
 import 'package:solikin/services/notifications_service.dart';
 import 'dart:io';
-import 'medicine_details.dart';  // Import the new medicine details page
+import 'medicine_details.dart';
 
 class DashboardPage extends StatefulWidget {
   String patientId;
@@ -34,7 +34,6 @@ class _DashboardPageState extends State<DashboardPage> {
   XFile? _medicineImage;
   List<Map<String, dynamic>> _savedMedicines = [];
   final NotificationsService _notificationsService = NotificationsService();
-
 
   Future<void> _requestPermissions() async {
     final permissions = [
@@ -67,6 +66,7 @@ class _DashboardPageState extends State<DashboardPage> {
       }
     }
   }
+
   @override
   void initState() {
     super.initState();
@@ -74,7 +74,7 @@ class _DashboardPageState extends State<DashboardPage> {
     _requestExactAlarmsPermission();
     _loadMedicineData();
     _notificationsService.initNotification();
-    print('Patient ID: ${widget.patientId}'); 
+    print('Patient ID: ${widget.patientId}');
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -179,8 +179,6 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  
-
   @override
   void dispose() {
     _nameController.dispose();
@@ -242,40 +240,28 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> _logout() async {
-
     setState(() {
-
       widget.patientId = '';
-
     });
 
-    
-
-    Navigator.pushReplacement(
-
-      context,
-
+    Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => HomePage()),
-
+      (Route<dynamic> route) => false,
     );
-
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Patient Dashboard'),
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        title: const Text('Patient Dashboard', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
-
           IconButton(
-
             icon: const Icon(Icons.logout),
-
             onPressed: _logout,
-
           ),
-
         ],
       ),
       body: Padding(
@@ -468,48 +454,73 @@ class _DashboardPageState extends State<DashboardPage> {
       itemCount: _savedMedicines.length,
       itemBuilder: (context, index) {
         final medicine = _savedMedicines[index];
-        return ListTile(
-          leading: medicine['imagePath'].isNotEmpty
-              ? Image.file(File(medicine['imagePath']), width: 50, height: 50, fit: BoxFit.cover)
-              : null,
-          title: Text(medicine['name']),
-          subtitle: Text('${medicine['dosage']} - ${medicine['schedule'].join(', ')}'),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(medicine['beforeFood'] ? 'Before Food' : 'After Food'),
-              Checkbox(
-                value: medicine['taken'],
-                onChanged: (bool? value) {
-                  setState(() {
-                    medicine['taken'] = value ?? false;
-                    _updateMedicineData();
-                  });
-                },
-              ),
-            ],
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 8.0),
+          child: ListTile(
+            leading: medicine['imagePath'].isNotEmpty
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(4.0),
+                    child: Image.file(
+                      File(medicine['imagePath']),
+                      width: 50,
+                      height: 50,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : CircleAvatar(
+                    child: Text((index + 1).toString()),
+                  ),
+            title: Text(
+              '${index + 1}. ${medicine['name']}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text('${medicine['dosage']} - ${medicine['schedule'].join(', ')}'),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(medicine['beforeFood'] ? 'Before Food' : 'After Food'),
+                Checkbox(
+                  value: medicine['taken'],
+                  onChanged: (bool? value) {
+                    setState(() {
+                      medicine['taken'] = value ?? false;
+                      _updateMedicineData();
+                    });
+                  },
+                ),
+              ],
+            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MedicineDetailsPage(medicine: medicine),
+                ),
+              );
+            },
           ),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => MedicineDetailsPage(medicine: medicine),
-              ),
-            );
-          },
         );
       },
     );
   }
 
-  Widget _buildAddMedicineButton() {
-    return ElevatedButton(
+Widget _buildAddMedicineButton() {
+  return SizedBox( 
+    height: 60.0,  // Increases the height of the button
+    child: ElevatedButton(
       onPressed: () {
         setState(() {
           _showMedicineForm = true;
         });
       },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.cyan.shade400,  // Changes the background color of the button
+        foregroundColor: Colors.white,  // Changes the text color of the button
+        textStyle: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),  // Increases the font size
+      ),
       child: const Text('Add Medicine'),
-    );
-  }
+    ),
+  );
+}
+
 }

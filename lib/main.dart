@@ -213,17 +213,19 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (user != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (context) => widget.role == 'Patient'
-                  ? DashboardPage(patientId: user['id']) // Pass patient ID
-                  : DashboardKinPage(kinId: user['id'])),
-        );
+        Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+        builder: (context) => widget.role == 'Patient'
+          ? DashboardPage(patientId: user['id'])
+          : DashboardKinPage(kinId: user['id']),
+        ),
+        (Route<dynamic> route) => false,
+      );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Invalid credentials or role')));
+        const SnackBar(content: Text('Invalid credentials or role')));
       }
+
     } else {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('No users found')));

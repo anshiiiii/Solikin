@@ -50,16 +50,35 @@ class _PatientDetailsPageState extends State<PatientDetailsPage> {
               itemCount: _medicines.length,
               itemBuilder: (context, index) {
                 final medicine = _medicines[index];
-                return ListTile(
-                  title: Text(medicine['name']),
-                  subtitle: Text(
-                    'Dosage: ${medicine['dosage']}\n'
-                    'Schedule: ${medicine['schedule'].join(', ')}\n'
-                    'Timings: ${medicine['times'].join(', ')}\n'
-                    'Taken: ${medicine['taken'] ? 'Yes' : 'No'}',
-                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.normal)
+                return Card(
+                  margin: EdgeInsets.symmetric(vertical: 8.0),
+                  child: ListTile(
+                    leading: medicine['imagePath'].isNotEmpty
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(4.0),
+                            child: Image.file(
+                              File(medicine['imagePath']),
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : CircleAvatar(
+                            child: Text('${index + 1}'),
+                          ),
+                    title: Text(
+                      '${index + 1}. ${medicine['name']}',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      'Dosage: ${medicine['dosage']}\n'
+                      'Schedule: ${medicine['schedule'].join(', ')}\n'
+                      'Timings: ${medicine['times'].join(', ')}\n'
+                      'Taken: ${medicine['taken'] ? 'Yes' : 'No'}',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.normal),
+                    ),
+                    isThreeLine: true,
                   ),
-                  isThreeLine: true,
                 );
               },
             ),
