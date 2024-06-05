@@ -117,6 +117,52 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
+  String? _validateName(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter your name';
+    } else {
+      String patt = r'^[a-zA-Z ]+$';
+      RegExp regExp = RegExp(patt);
+      if (!regExp.hasMatch(value)) {
+        return 'Please enter a valid name';
+      }
+    }
+    return null;
+  }
+
+  String? _validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter your email or phone number';
+    }
+    else{
+            String patt = r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$';
+            RegExp regExp = new RegExp(patt);
+            if (!regExp.hasMatch(value)) {
+                return 'Please enter a valid email';
+              }
+      }
+    return null;
+  }
+
+ String? _validatePassword(String? value) {
+  if (value == null || value.isEmpty) {
+    return 'Please enter your password';
+  }
+  // Check if the password is at least 8 characters long
+  if (value.length < 8) {
+    return 'Password must be at least 8 characters long';
+  }
+  // Check if the password contains at least one uppercase letter, one lowercase letter, one number, and one special character
+  String pattern = r'^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$';
+  RegExp regex = RegExp(pattern);
+  if (!regex.hasMatch(value)) {
+    return 'Password must include atleast one uppercase, lowercase letters,a digit and a special character';
+  }
+  return null;
+}
+
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -128,29 +174,35 @@ class _RegisterPageState extends State<RegisterPage> {
           children: [
             const Text('Register', style: TextStyle(fontSize: 24)),
             const SizedBox(height: 20),
-            TextField(
+            TextFormField(
               controller: _nameController,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
               decoration: const InputDecoration(
-                labelText: 'Name',
+                labelText: 'Enter your Name',
                 border: OutlineInputBorder(),
               ),
+              validator: _validateName,
             ),
             const SizedBox(height: 20),
-            TextField(
+            TextFormField(
               controller: _emailController,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
               decoration: const InputDecoration(
-                labelText: 'Email or Phone Number',
+                labelText: 'Enter your Email',
                 border: OutlineInputBorder(),
               ),
+              validator: _validateEmail,
             ),
             const SizedBox(height: 20),
-            TextField(
+            TextFormField(
               obscureText: true,
               controller: _passwordController,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
               decoration: const InputDecoration(
                 labelText: 'Password',
                 border: OutlineInputBorder(),
               ),
+               validator: _validatePassword,
             ),
             if (widget.role == 'Patient') ...[
               const SizedBox(height: 20),
@@ -178,10 +230,12 @@ class _RegisterPageState extends State<RegisterPage> {
               onPressed: _registerUser,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 20),
-                backgroundColor: const Color.fromARGB(255, 126, 195, 252),
-                textStyle: const TextStyle(fontSize: 20),
+                backgroundColor: Colors.cyan.shade400,
               ),
-              child: const Text('Register'),
+              child: const DefaultTextStyle(
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+              child:  Text('Register'),
+            ),
             ),
           ],
         ),
