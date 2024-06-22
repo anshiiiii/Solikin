@@ -127,6 +127,7 @@ class HomePage extends StatelessWidget {
           'Welcome To SOLIKIN',
           style: TextStyle(
             fontWeight: FontWeight.bold,
+            color: Color.fromRGBO(38, 198, 218, 1),
           ),
         ),
       ),
@@ -143,7 +144,7 @@ class HomePage extends StatelessWidget {
           children: [
             const Text(
               'Choose your role',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color.fromRGBO(38, 198, 218, 1)),
             ),
             const SizedBox(height: 30),
             ElevatedButton(
@@ -237,7 +238,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: Text('Login as ${widget.role}', style: const TextStyle(fontWeight: FontWeight.bold)), // Set the title based on the role
+        title: Text('Login as ${widget.role}', style: const TextStyle(fontWeight: FontWeight.bold,color: Color.fromRGBO(38, 198, 218, 1))), // Set the title based on the role
       ),
       body: Center(
         child: Padding(
@@ -283,7 +284,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         builder: (context) => RegisterPage(role: widget.role)),
                   );
                 },
-                child: const Text('New User? Register Here'),
+                child: const Text('New User? Register Here', style: TextStyle(fontSize:20,fontWeight: FontWeight.bold, color: Color.fromRGBO(38, 198, 218, 1))),
               ),
             ],
           ),
