@@ -6,10 +6,12 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
 import 'package:solikin/main.dart';
-import 'package:solikin/services/notifications_service.dart';
 import 'dart:io';
 import 'medicine_details.dart';
+import 'alarm_provider.dart';
+import 'package:provider/provider.dart'; 
 
+// ignore: must_be_immutable
 class DashboardPage extends StatefulWidget {
   String patientId;
 
@@ -33,7 +35,6 @@ class _DashboardPageState extends State<DashboardPage> {
   final _instructionsController = TextEditingController();
   XFile? _medicineImage;
   List<Map<String, dynamic>> _savedMedicines = [];
-  final NotificationsService _notificationsService = NotificationsService();
 
   Future<void> _requestPermissions() async {
     final permissions = [
@@ -73,7 +74,8 @@ class _DashboardPageState extends State<DashboardPage> {
     _requestPermissions();
     _requestExactAlarmsPermission();
     _loadMedicineData();
-    _notificationsService.initNotification();
+    final alarmProvider = Provider.of<AlarmProvider>(context, listen: false);
+    alarmProvider.initialize(context);
     print('Patient ID: ${widget.patientId}');
   }
 
@@ -211,33 +213,22 @@ class _DashboardPageState extends State<DashboardPage> {
     return format.format(dt);
   }
 
-  Future<void> _scheduleNotifications(Map<String, dynamic> medicineData) async {
-    for (int i = 0; i < medicineData['schedule'].length; i++) {
-      final schedule = medicineData['schedule'][i];
-      final time = medicineData['times'][i];
-      if (time != null && time.isNotEmpty) {
-        final timeOfDay = DateFormat.jm().parse(time);
-        final now = DateTime.now();
-        var firstNotification = DateTime(
-          now.year,
-          now.month,
-          now.day,
-          timeOfDay.hour,
-          timeOfDay.minute,
-        );
-        if (firstNotification.isBefore(now)) {
-          firstNotification = firstNotification.add(Duration(days: 1));
-        }
-        print('Scheduling notification for ${medicineData['name']} at $firstNotification');
-        await _notificationsService.scheduleNotification(
-          id: medicineData['name'].hashCode + schedule.hashCode,
-          title: 'Time to take your medicine',
-          message: '${medicineData['name']} - ${schedule}',
-          scheduledNotificationDateTime: firstNotification,
-        );
-      }
-    }
-  }
+ Future<void> _setMedicineReminder(String name, String dosage, String schedule, String time) async {
+  final alarmProvider = Provider.of<AlarmProvider>(context, listen: false);
+  final now = DateTime.now();
+  final dateTime = DateFormat.jm().parse(time);  // Assume time is in format 'hh:mm AM/PM'
+  final alarmDateTime = DateTime(now.year, now.month, now.day, dateTime.hour, dateTime.minute);
+
+  // Create unique id for each notification
+  final id = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+  await alarmProvider.scheduleNotification(alarmDateTime, id, name, schedule, dosage);
+
+  // Save the alarm details (you can add other details as needed)
+  alarmProvider.setAlarm(name, alarmDateTime.toIso8601String(), true, schedule, id, alarmDateTime.millisecondsSinceEpoch);
+  alarmProvider.getData();
+}
+
 
   Future<void> _logout() async {
     setState(() {
@@ -405,16 +396,28 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: () async {
-              if (_nameController.text.isEmpty || _dosageController.text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('Please fill in all fields'),
-                ));
-                return;
+            final name = _nameController.text;
+            final dosage = _dosageController.text;
+            if (name.isNotEmpty && dosage.isNotEmpty && _schedules.isNotEmpty) {
+              for (var schedule in _schedules) {
+                final time = _timeControllers[schedule]?.text;
+                if (time != null && time.isNotEmpty) {
+                  await _setMedicineReminder(name, dosage, schedule, time);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Reminder set for $name at $time')),
+                  );
+               }
               }
               String imagePath = '';
               if (_medicineImage != null) {
                 imagePath = await _saveImage(File(_medicineImage!.path));
-              }
+                if (imagePath.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to save image')),
+                  );
+                  return;
+                }
+              } 
               final medicineData = {
                 'name': _nameController.text,
                 'dosage': _dosageController.text,
@@ -428,7 +431,6 @@ class _DashboardPageState extends State<DashboardPage> {
               final jsonData = jsonEncode(medicineData);
               await _appendMedicineData(jsonData);
               await _loadMedicineData();
-              await _scheduleNotifications(medicineData);
               setState(() {
                 _showMedicineForm = false;
                 _nameController.clear();
@@ -438,9 +440,15 @@ class _DashboardPageState extends State<DashboardPage> {
                 });
                 _schedules.clear();
                 _beforeFood = true;
-                _instructionsController.clear();
+                  _instructionsController.clear();
                 _medicineImage = null;
               });
+              }
+              else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Please fill all required fields')),
+                );
+              }
             },
             child: const Text('Save Medicine'),
           ),

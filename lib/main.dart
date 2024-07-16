@@ -2,33 +2,50 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:provider/provider.dart';
 
 import 'package:path_provider/path_provider.dart';
 import 'package:solikin/register_page.dart';
-import 'package:solikin/services/notifications_service.dart';
 import 'dashboard_patient.dart';
+import 'alarm_provider.dart';
 import 'dashboard_kin.dart'; // Import the kin dashboard page
 import 'package:timezone/data/latest.dart' as tz;
 
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  NotificationsService().initNotification();
   tz.initializeTimeZones();
+  initializeNotifications();
   runApp(MyApp());
+}
+
+void initializeNotifications() async {
+  var androidInitialize = const AndroidInitializationSettings('@mipmap/ic_launcher');
+  var iOSinitialize = const DarwinInitializationSettings();
+  var initializationSettings = InitializationSettings(android: androidInitialize, iOS: iOSinitialize);
+  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings, onDidReceiveNotificationResponse: (response) {
+    // Handle notification response
+  });
 }
 
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Solikin',
-      theme: ThemeData(
-        primarySwatch: Colors.cyan,
+    return ChangeNotifierProvider(
+      create: (_) => AlarmProvider(),
+      child: MaterialApp(
+        title: 'Solikin',
+        theme: ThemeData(
+          primarySwatch: Colors.cyan,
+        ),
+        home: SplashScreen(),
       ),
-      home: SplashScreen(),
     );
   }
 }
+
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -47,6 +64,9 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(seconds: 3),
       vsync: this,
     );
+
+    final alarmProvider = Provider.of<AlarmProvider>(context, listen: false);
+    alarmProvider.initialize(context);
 
     _controller.forward().whenComplete(() {
       Navigator.pushReplacement(
