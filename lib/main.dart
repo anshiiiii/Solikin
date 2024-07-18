@@ -1,8 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:android_intent/android_intent.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import 'package:path_provider/path_provider.dart';
@@ -137,7 +140,16 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  
+     Set<Permission> _requestedPermissions = {};
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -154,6 +166,169 @@ class HomePage extends StatelessWidget {
       body: _buildChoiceScreen(context),
     );
   }
+
+
+Future<void> checkPermission(Permission permission, BuildContext context) async {
+  
+  if (_requestedPermissions.contains(permission)) {
+      return;
+    }
+
+  _requestedPermissions.add(permission);
+  if (permission == Permission.storage) {
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Storage Permission'),
+        content: Text('Please allow storage permission to store your details.'),
+        actions: [
+          ElevatedButton(
+            child: Text('OK'),
+            onPressed: () async {
+              Navigator.of(context).pop();
+              if (await _requestStoragePermission()) {
+                setState(() {});
+                _requestNextPermission(context);
+              } 
+              else {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text('Storage permissions are required to save your data in your device.'),
+                ));
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+  else if (permission == Permission.systemAlertWindow) {
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Display Over Other Apps Permission'),
+        content: Text('Please grant the Display Over Other Apps permission for getting your remainders, please follow these steps:\n\n1. Tap "OK"\n2. You will be directed to"Display Over Other Apps"\n3. Select "Solikin"\n4. Tap "Allow" or Press the toggle button'),
+        actions: [
+          ElevatedButton(
+            child: Text('OK'),
+            onPressed: () async {
+              Navigator.of(context).pop();
+              final intent = AndroidIntent(
+                action: 'android.settings.action.MANAGE_OVERLAY_PERMISSION',
+              );
+              await intent.launch();
+              if (await _requestSystemAlertWindowPermission()) {
+                _requestNextPermission(context);
+              } 
+              else {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text('Display Over Other Apps permission is required to use this app'),
+                ));
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+  else {
+    final status = await permission.request();
+    if (status.isGranted) {
+      _requestNextPermission(context);
+    } 
+    else if (status.isDenied || status.isPermanentlyDenied) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Permission for $permission is required to use this app')),
+      );
+    }
+  }
+}
+
+void _requestNextPermission(BuildContext context) async {
+  final permissions = [
+    Permission.camera,
+    Permission.storage,
+    Permission.systemAlertWindow,
+    Permission.notification,
+    Permission.photos,
+    Permission.scheduleExactAlarm,
+  ];
+  for (var permission in permissions) {
+    if (_requestedPermissions.contains(permission)) {
+      continue;
+    }
+    final status = await permission.status;
+    if (status != PermissionStatus.granted) {
+      _requestedPermissions.add(permission);
+      await _requestPermission(permission, context);
+      break;
+    }
+  }
+}
+
+Future<void> _requestPermissions(BuildContext context) async {
+  final permissions = [
+    Permission.camera,
+    Permission.storage,
+    Permission.systemAlertWindow,
+    Permission.notification,
+    Permission.photos,
+    Permission.scheduleExactAlarm,
+  ];
+
+  for (var permission in permissions) {
+    await checkPermission(permission, context);
+  }
+}
+
+Future<void> _requestPermission(Permission permission, BuildContext context) async {
+  if (await permission.isGranted) {
+    return;
+  }
+  await checkPermission(permission, context);
+}
+
+Future<bool> _requestStoragePermission() async {
+  AndroidDeviceInfo build = await DeviceInfoPlugin().androidInfo;
+  if (build.version.sdkInt >= 30) {
+    var re = await Permission.manageExternalStorage.request();
+    return re.isGranted;
+  } else {
+    if (await Permission.storage.isGranted) {
+      return true;
+    } else {
+      var result = await Permission.storage.request();
+      return result.isGranted;
+    }
+  }
+}
+
+Future<bool> _requestSystemAlertWindowPermission() async {
+  AndroidDeviceInfo build = await DeviceInfoPlugin().androidInfo;
+  if (build.version.sdkInt >= 23) {
+    var re = await Permission.systemAlertWindow.request();
+    return re.isGranted;
+  } 
+  else {
+    if (await Permission.systemAlertWindow.isGranted) {
+      return true;
+    } 
+    else {
+      var result = await Permission.systemAlertWindow.request();
+      return result.isGranted;
+    }
+  }
+}
+
+@override
+void initState() {
+  super.initState();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    _requestPermissions(context).then((_) {
+      final alarmProvider = Provider.of<AlarmProvider>(context, listen: false);
+      alarmProvider.initialize(context);
+    });
+  });
+}
 
   Widget _buildChoiceScreen(BuildContext context) {
     return Padding(

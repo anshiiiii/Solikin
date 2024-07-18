@@ -36,43 +36,11 @@ class _DashboardPageState extends State<DashboardPage> {
   XFile? _medicineImage;
   List<Map<String, dynamic>> _savedMedicines = [];
 
-  Future<void> _requestPermissions() async {
-    final permissions = [
-      Permission.camera,
-      Permission.storage,
-      Permission.manageExternalStorage,
-      Permission.systemAlertWindow,
-      Permission.notification,
-    ];
-
-    for (var permission in permissions) {
-      var status = await permission.request();
-      if (status.isDenied) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Permission for $permission is required')),
-        );
-        return;
-      }
-    }
-  }
-
-  Future<void> _requestExactAlarmsPermission() async {
-    if (Platform.isAndroid) {
-      if (await Permission.systemAlertWindow.request().isGranted) {
-        // Exact alarms permission granted
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Exact alarms permission is required')),
-        );
-      }
-    }
-  }
+  
 
   @override
   void initState() {
     super.initState();
-    _requestPermissions();
-    _requestExactAlarmsPermission();
     _loadMedicineData();
     final alarmProvider = Provider.of<AlarmProvider>(context, listen: false);
     alarmProvider.initialize(context);
