@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
+import 'package:alarm/alarm.dart';
+import 'alarmRingScreen.dart';
 
 class AlarmProvider extends ChangeNotifier {
   late SharedPreferences preferences;
@@ -19,14 +21,32 @@ class AlarmProvider extends ChangeNotifier {
     var initializationsSettings = InitializationSettings(android: androidInitialize, iOS: iOSinitialize);
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     await flutterLocalNotificationsPlugin!.initialize(initializationsSettings, onDidReceiveNotificationResponse: onDidReceiveNotificationResponse);
+
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'full_screen_channel',
+      'Full Screen Notifications',
+      description: 'This channel is used for full-screen notifications',
+      importance: Importance.max,
+    );
+
+    await flutterLocalNotificationsPlugin!.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+
+    await Alarm.init();
   }
 
   void onDidReceiveNotificationResponse(NotificationResponse notificationResponse) async {
     final String? payload = notificationResponse.payload;
     if (payload != null) {
       debugPrint('notification payload: $payload');
+      final alarmSettings = AlarmSettings.fromJson(jsonDecode(payload));
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ExampleAlarmRingScreen(alarmSettings: alarmSettings),
+        ),
+      );
     }
-    // Handle navigation to a specific screen if necessary
   }
 
   Future<void> getData() async {
@@ -61,49 +81,46 @@ class AlarmProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> showNotification() async {
-    const AndroidNotificationDetails androidNotificationDetails = AndroidNotificationDetails(
-      'your channel id',
-      'your channel name',
-      channelDescription: 'your channel description',
-      importance: Importance.max,
-      priority: Priority.high,
-      ticker: 'ticker',
-    );
-    const NotificationDetails notificationDetails = NotificationDetails(android: androidNotificationDetails);
-    await flutterLocalNotificationsPlugin!.show(
-      0,
-      'plain title',
-      'plain body',
-      notificationDetails,
-      payload: 'item x',
-    );
-  }
+ Future<void> scheduleNotification(DateTime dateTime, int randomNumber, String medicineName, String schedule, String dosage, String instructions, bool beforeFood, String imagePath) async {
+  int newTime = dateTime.millisecondsSinceEpoch - DateTime.now().millisecondsSinceEpoch;
+  final alarmSettings = AlarmSettings(
+    id: randomNumber,
+    dateTime: dateTime,
+    assetAudioPath: 'assets/audio/audio.mp3', // Make sure this path is correct
+    notificationTitle: 'Medicine Reminder: $medicineName',
+    notificationBody: '$medicineName;$dosage;$schedule;$instructions;$beforeFood;$imagePath',
+  );
 
-  Future<void> scheduleNotification(DateTime dateTime, int randomNumber, String medicineName, String schedule, String dosage) async {
-    int newTime = dateTime.millisecondsSinceEpoch - DateTime.now().millisecondsSinceEpoch;
-    await flutterLocalNotificationsPlugin!.zonedSchedule(
-      randomNumber,
-      'Medicine Reminder: $medicineName',
-      'Dosage: $dosage\nSchedule: $schedule',
-      tz.TZDateTime.now(tz.local).add(Duration(milliseconds: newTime)),
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          'your channel id',
-          'your channel name',
-          channelDescription: 'your channel description',
-          sound: RawResourceAndroidNotificationSound("audio"),
-          autoCancel: false,
-          playSound: true,
-          priority: Priority.max,
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-    );
-  }
+  await Alarm.set(alarmSettings: alarmSettings);
+
+  final details = NotificationDetails(
+    android: AndroidNotificationDetails(
+      'full_screen_channel',
+      'Full Screen Notifications',
+      channelDescription: 'This channel is used for full-screen notifications',
+      sound: RawResourceAndroidNotificationSound("audio"),
+      autoCancel: false,
+      playSound: true,
+      priority: Priority.max,
+      importance: Importance.max,
+      fullScreenIntent: true,
+    ),
+  );
+
+  await flutterLocalNotificationsPlugin!.zonedSchedule(
+    randomNumber,
+    'Medicine Reminder: $medicineName',
+    'Dosage: $dosage, Schedule: $schedule, Instructions: $instructions, Before Food: $beforeFood',
+    tz.TZDateTime.now(tz.local).add(Duration(milliseconds: newTime)),
+    details,
+    androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+    payload: jsonEncode(alarmSettings),
+  );
+}
 
   Future<void> cancelNotification(int notificationId) async {
     await flutterLocalNotificationsPlugin!.cancel(notificationId);
+    await Alarm.stop(notificationId);
   }
 }

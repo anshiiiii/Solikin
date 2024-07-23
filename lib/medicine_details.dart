@@ -15,22 +15,24 @@ class MedicineDetailsPage extends StatelessWidget {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (medicine['imagePath'].isNotEmpty)
-              Image.file(File(medicine['imagePath'])),
-            const SizedBox(height: 16),
-            Text('Dosage: ${medicine['dosage']}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
-            const SizedBox(height: 16),
-            Text('Schedule: ${medicine['schedule'].join(', ')}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
-            const SizedBox(height: 16),
-            Text('Timings: ${medicine['times'].join(', ')}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
-            const SizedBox(height: 16),
-            Text('Before/After Food: ${medicine['beforeFood'] ? 'Before Food' : 'After Food'}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
-            const SizedBox(height: 16),
-            Text('Instructions: ${medicine['instructions']}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (medicine['imagePath'].isNotEmpty)
+                Image.file(File(medicine['imagePath'])),
+              const SizedBox(height: 16),
+              Text('Dosage: ${medicine['dosage']}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
+              const SizedBox(height: 16),
+              Text('Schedule: ${medicine['schedule'].join(', ')}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
+              const SizedBox(height: 16),
+              Text('Timings: ${medicine['times'].join(', ')}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
+              const SizedBox(height: 16),
+              Text('Before/After Food: ${medicine['beforeFood'] ? 'Before Food' : 'After Food'}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
+              const SizedBox(height: 16),
+              Text('Instructions: ${medicine['instructions']}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal)),
+            ],
+          ),
         ),
       ),
     );

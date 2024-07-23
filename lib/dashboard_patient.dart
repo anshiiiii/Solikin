@@ -1,7 +1,7 @@
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
@@ -50,10 +50,14 @@ class _DashboardPageState extends State<DashboardPage> {
   Future<void> _pickImage(ImageSource source) async {
     final ImagePicker _picker = ImagePicker();
     final XFile? image = await _picker.pickImage(source: source);
-    setState(() {
-      _medicineImage = image;
-    });
+    if (image != null) {
+      final savedImagePath = await _saveImage(File(image.path));
+      setState(() {
+        _medicineImage = XFile(savedImagePath);
+      });
+    }
   }
+
 
   void _showImageSourceActionSheet(BuildContext context) {
     showModalBottomSheet(
@@ -83,7 +87,8 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Future<String> _saveImage(File image) async {
+
+Future<String> _saveImage(File image) async {
     try {
       final directory = await getExternalStorageDirectory();
       if (directory != null) {
@@ -92,8 +97,12 @@ class _DashboardPageState extends State<DashboardPage> {
         if (!await imageDirectory.exists()) {
           await imageDirectory.create(recursive: true);
         }
-        final fileName = path.basenameWithoutExtension(image.path) + '.jpg';
-        final newImage = await image.copy(path.join(imageDirectory.path, fileName));
+
+        final bytes = await image.readAsBytes();
+        final fileName = path.basenameWithoutExtension(image.path) + path.extension(image.path);
+        final newImage = File(path.join(imageDirectory.path, fileName));
+        await newImage.writeAsBytes(bytes);
+
         return newImage.path;
       } else {
         return '';
@@ -103,6 +112,7 @@ class _DashboardPageState extends State<DashboardPage> {
       return '';
     }
   }
+
 
   Future<void> _appendMedicineData(String jsonData) async {
     try {
@@ -184,18 +194,30 @@ class _DashboardPageState extends State<DashboardPage> {
  Future<void> _setMedicineReminder(String name, String dosage, String schedule, String time) async {
   final alarmProvider = Provider.of<AlarmProvider>(context, listen: false);
   final now = DateTime.now();
-  final dateTime = DateFormat.jm().parse(time);  // Assume time is in format 'hh:mm AM/PM'
-  final alarmDateTime = DateTime(now.year, now.month, now.day, dateTime.hour, dateTime.minute);
+  final dateTime = DateFormat.jm().parse(time);
+  DateTime alarmDateTime = DateTime(now.year, now.month, now.day, dateTime.hour, dateTime.minute);
+
+  // Ensure the alarm time is in the future
+  if (alarmDateTime.isBefore(now)) {
+    alarmDateTime = alarmDateTime.add(Duration(days: 1));
+  }
 
   // Create unique id for each notification
   final id = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
-  await alarmProvider.scheduleNotification(alarmDateTime, id, name, schedule, dosage);
+  // Assuming these variables are available within your class
+  final instructions = _instructionsController.text;
+  final beforeFood = _beforeFood;
+  final imagePath = _medicineImage?.path ?? '';
+
+  await alarmProvider.scheduleNotification(alarmDateTime, id, name, schedule, dosage, instructions, beforeFood, imagePath);
 
   // Save the alarm details (you can add other details as needed)
   alarmProvider.setAlarm(name, alarmDateTime.toIso8601String(), true, schedule, id, alarmDateTime.millisecondsSinceEpoch);
   alarmProvider.getData();
 }
+
+
 
 
   Future<void> _logout() async {

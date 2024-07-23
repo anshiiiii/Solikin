@@ -175,7 +175,9 @@ Future<void> checkPermission(Permission permission, BuildContext context) async 
     }
 
   _requestedPermissions.add(permission);
-  if (permission == Permission.storage) {
+  if (permission == Permission.manageExternalStorage) {
+    if(await Permission.manageExternalStorage.isDenied)
+    {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -200,8 +202,11 @@ Future<void> checkPermission(Permission permission, BuildContext context) async 
         ],
       ),
     );
+    }
   }
   else if (permission == Permission.systemAlertWindow) {
+    if(await Permission.systemAlertWindow.isDenied)
+    {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -229,6 +234,7 @@ Future<void> checkPermission(Permission permission, BuildContext context) async 
         ],
       ),
     );
+    }
   }
   else {
     final status = await permission.request();
@@ -246,10 +252,10 @@ Future<void> checkPermission(Permission permission, BuildContext context) async 
 void _requestNextPermission(BuildContext context) async {
   final permissions = [
     Permission.camera,
-    Permission.storage,
-    Permission.systemAlertWindow,
     Permission.notification,
     Permission.photos,
+    Permission.manageExternalStorage,
+    Permission.systemAlertWindow,
     Permission.scheduleExactAlarm,
   ];
   for (var permission in permissions) {
@@ -268,10 +274,10 @@ void _requestNextPermission(BuildContext context) async {
 Future<void> _requestPermissions(BuildContext context) async {
   final permissions = [
     Permission.camera,
-    Permission.storage,
-    Permission.systemAlertWindow,
     Permission.notification,
     Permission.photos,
+    Permission.manageExternalStorage,
+    Permission.systemAlertWindow,
     Permission.scheduleExactAlarm,
   ];
 
@@ -293,10 +299,10 @@ Future<bool> _requestStoragePermission() async {
     var re = await Permission.manageExternalStorage.request();
     return re.isGranted;
   } else {
-    if (await Permission.storage.isGranted) {
+    if (await Permission.manageExternalStorage.isGranted) {
       return true;
     } else {
-      var result = await Permission.storage.request();
+      var result = await Permission.manageExternalStorage.request();
       return result.isGranted;
     }
   }

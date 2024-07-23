@@ -17,7 +17,7 @@ if [ -f "$output_file" ]; then
 fi
 
 # List of directories to look for
-directories=("lib" "test" "assets" "android" "ios" "web")
+directories=("lib")
 
 # List of file types to ignore
 ignore_files=("*.ico" "*.png" "*.jpg" "*.jpeg" "*.gif" "*.svg" "*.mp3" "*.mp4" "*.ogg" "*.flac" "*.wav")
